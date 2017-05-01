@@ -1,6 +1,8 @@
 import cgi
+from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+import SocketServer
 
-"""imple HTTP server in python.
+"""Simple HTTP server in python.
 Usage::
     ./dummy-web-server.py [<port>]
 Send a GET request::
@@ -10,11 +12,29 @@ Send a HEAD request::
 Send a POST request::
     curl -d "foo=bar&bin=baz" http://localhost
 """
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-import SocketServer
 
 class S(BaseHTTPRequestHandler):
+    commands = {"on": 1, "off": 0}
+    pins = {"fan": 1, "light": 2}    
 
+    def set_power(self, pin_number, state):
+        #digitalWrite(pin_number, state)
+        print "You set pin %s to %d" %(pin_number, state)
+
+#Note: Don't need seperate functions per item, could just have dict linking name to pin number (e.g. {"fan": 1})
+
+    def get_details(self, appliance, state):
+        pin_number = self.pins[appliance]
+        state = self.commands[state.lower()] 
+        return pin_number, state
+
+    def run_commands(self, postvars):
+        print "Run commands"
+        for key, value in postvars.iteritems():
+            pin_number, state = self.get_details(key, value[0])
+            self.set_power(pin_number, state)
+            print pin_number, state
+            
     def handle_POST_data(self, data):
         print data 
         ctype, pdict = data
@@ -25,13 +45,7 @@ class S(BaseHTTPRequestHandler):
             postvars = cgi.parse_qs(self.rfile.read(length), keep_blank_values=1)
         else:
             postvars = {}
-        return self.format_data(postvars)
-
-    def format_data(self, postvars):
-        var_list = []
-        for key, value in postvars.iteritems():
-            var_list.append(value[0])
-        return var_list
+        return postvars
 
     def _set_headers(self):
         self.send_response(200)
@@ -48,7 +62,8 @@ class S(BaseHTTPRequestHandler):
     def do_POST(self):
         self._set_headers()
         postvars = self.handle_POST_data(cgi.parse_header(self.headers.getheader('content-type')))
-        self.wfile.write("<html><body><h1>%s</h1></body></html>" %postvars)
+        self.wfile.write(postvars)
+        self.run_commands(postvars)
 
 def run(server_class=HTTPServer, handler_class=S, port=80):
     server_address = ('', port)
