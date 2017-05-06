@@ -23,19 +23,18 @@ Send a POST request::
 
 wiringpi.wiringPiSetup()
 os.system('modprobe w1-gpio')
-base_dir = '/sys/bus/w1/devices/')
+base_dir = ('/sys/bus/w1/devices/')
 device_folder = glob.glob(base_dir + '28*')[0]
 device_file = device_folder + '/w1_slave'
 
 class S(BaseHTTPRequestHandler):
     commands = {"on": 1, "off": 0}
-    pins = {"fan": 1, "light": 2}    
+    pins = {"fan": 0, "light": 1}    
 
     def set_power(self, pin_number, state):
-        #digitalWrite(pin_number, state)
+        wiringpi.pinMode(pin_number, 1)
+        wiringpi.digitalWrite(pin_number, state)
         print "You set pin %s to %d" %(pin_number, state)
-
-#Note: Don't need seperate functions per item, could just have dict linking name to pin number (e.g. {"fan": 1})
 
     def get_details(self, appliance, state):
         pin_number = self.pins[appliance]
