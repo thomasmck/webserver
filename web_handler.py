@@ -44,6 +44,7 @@ class S(BaseHTTPRequestHandler):
     def run_commands(self, postvars):
         print "Run commands"
         for key, value in postvars.iteritems():
+            self.wfile.write("You set the %s to %s \n" %(key, value[0]))
             pin_number, state = self.get_details(key, value[0])
             self.set_power(pin_number, state)
             
@@ -64,17 +65,9 @@ class S(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
-    def do_GET(self):
-        self._set_headers()
-        self.wfile.write("<html><body><h1>hi!</h1></body></html>")
-
-    def do_HEAD(self):
-        self._set_headers()
-        
     def do_POST(self):
         self._set_headers()
         postvars = self.handle_POST_data(cgi.parse_header(self.headers.getheader('content-type')))
-        self.wfile.write(postvars)
         self.run_commands(postvars)
 
 def run(server_class=HTTPServer, handler_class=S, port=80):
