@@ -10,6 +10,8 @@ import time
 import wiringpi
 from time import sleep
 
+import argparse
+
 """Simple HTTP server in python.
 Usage::
     ./dummy-web-server.py [<port>]
@@ -29,15 +31,17 @@ device_file = device_folder + '/w1_slave'
 
 class S(BaseHTTPRequestHandler):
     commands = {"on": 1, "off": 0}
-    pins = {"fan": 0, "light": 1}    
+    #first number is the pin number, second is the state
+    pins = {"fan": [0, 0], "light": [1, 0]}    
 
-    def set_power(self, pin_number, state):
+    def set_power(self, pin_number, state, appliance):
         wiringpi.pinMode(pin_number, 1)
         wiringpi.digitalWrite(pin_number, state)
+        self.pins[appliance] = [pin_number, state]
         print "You set pin %s to %d" %(pin_number, state)
 
     def get_details(self, appliance, state):
-        pin_number = self.pins[appliance]
+        pin_number = self.pins[appliance][0]
         state = self.commands[state.lower()] 
         return pin_number, state
 
@@ -46,7 +50,7 @@ class S(BaseHTTPRequestHandler):
         for key, value in postvars.iteritems():
             self.wfile.write("You set the %s to %s \n" %(key, value[0]))
             pin_number, state = self.get_details(key, value[0])
-            self.set_power(pin_number, state)
+            self.set_power(pin_number, state, key)
             
     def handle_POST_data(self, data):
         print data 
@@ -65,6 +69,11 @@ class S(BaseHTTPRequestHandler):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
 
+    def do_GET(self):
+        self._set_headers()
+        for key, value in self.pins.iteritems():
+            self.wfile.write("<html><body><h1>%s: %d</h1></body></html>" %(key,value[1]))
+
     def do_POST(self):
         self._set_headers()
         postvars = self.handle_POST_data(cgi.parse_header(self.headers.getheader('content-type')))
@@ -76,10 +85,8 @@ def run(server_class=HTTPServer, handler_class=S, port=80):
     print 'Starting httpd...'
     httpd.serve_forever()
 
-if __name__ == "__main__":
-    from sys import argv
-
-    if len(argv) == 2:
-        run(port=int(argv[1]))
-    else:
-        run()
+if __name__ == "__main__": 
+    parser = argparse.ArgumentParser(description='Handle address port')
+    parser.add_argument('port', metavar='p', type=int, default="80", nargs='?')
+    args = parser.parse_args()
+    run(port=args.port) 
